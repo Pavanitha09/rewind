@@ -4,8 +4,15 @@ version = "0.1.0"
 description = "Crash-safe side effects for AI agents: an effect ledger for LangGraph with idempotency keys and fencing"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "psycopg[binary]>=3.3.6",
+]
 
 [build-system]
 requires = ["uv_build>=0.12.21,<0.13.0"]
 build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
