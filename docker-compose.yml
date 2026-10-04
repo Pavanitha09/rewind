@@ -6,3 +6,19 @@ services:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
     restart: unless-stopped
+
+  postgres:
+    image: postgres:17
+    container_name: rewind-postgres
+    environment:
+      POSTGRES_USER: rewind
+      POSTGRES_PASSWORD: rewind
+      POSTGRES_DB: rewind
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  pgdata:
