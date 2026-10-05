@@ -75,10 +75,13 @@ Because the intent is written first (the **transactional outbox** idea), a crash
 
 ```
 PENDING ──► DISPATCHED ──► CONFIRMED ──(compensation confirmed)──► COMPENSATED
-                 │
+   ▲             │
+   └─(release)───┤          release: only when CERTAIN the request never left (connection refused, 429)
                  ├──────► FAILED
                  └──────► UNKNOWN ──(lookup succeeds)──► CONFIRMED / FAILED
 ```
+
+Ledger functions (`src/rewind/ledger.py`): `intent()` creates PENDING; `dispatch()` PENDING→DISPATCHED; `confirm()` DISPATCHED/UNKNOWN→CONFIRMED; `fail()` DISPATCHED/UNKNOWN→FAILED; `mark_unknown()` DISPATCHED→UNKNOWN; `release()` DISPATCHED→PENDING. All moves are guarded updates, so concurrent callers can't both win.
 
 | Status | Meaning | Recovery action after a crash |
 |---|---|---|
@@ -90,7 +93,7 @@ PENDING ──► DISPATCHED ──► CONFIRMED ──(compensation confirmed)�
 | `COMPENSATED` | A confirmed effect was undone by a separate compensation effect | Final |
 
 **Design decisions:**
-- `FAILED` and `COMPENSATED` are **final**. A retry is a new effect row, so each row is a permanent, honest record. That is what makes it a ledger.
+- `FAILED` and `COMPENSATED` are **final**. A retry after a real failure is a new effect row, so each row is a permanent, honest record. That is what makes it a ledger.
 - A **compensation is itself an effect** with its own row, key, and lifecycle, linked via `compensates_key`. The original moves to `COMPENSATED` only when its compensation reaches `CONFIRMED`.
 - Postgres `CHECK` constraints prevent invalid **values**. Invalid **transitions** are prevented in code with guarded updates (`UPDATE ... SET status='DISPATCHED' WHERE key=$1 AND status='PENDING'`). If zero rows are updated, someone else already moved it.
 
@@ -345,8 +348,8 @@ rewind/
 | 1 | uv project setup | `uv run` works | ✅ |
 | 2 | Mailpit fake inbox + test email script | Email visible at `localhost:8025` | ✅ |
 | 3 | Postgres in Docker Compose (persistent volume) | Data survives `down`/`up` | ✅ |
-| 4 | `effects` table + state machine | Constraint tests reject bad rows | ⏳ in progress |
-| 5 | Ledger code: `intent()`, `dispatch()`, `confirm()` | Unit tests pass, including guarded transitions | ⬜ |
+| 4 | `effects` table + state machine | Constraint tests reject bad rows | ✅ |
+| 5 | Ledger code: `intent()`, `dispatch()`, `confirm()` | Unit tests pass, including guarded transitions | ✅ |
 | 6 | Tool adapters: email + Stripe refund (`execute`, `lookup`, `check_preconditions`) | Calling twice through Rewind → one effect | ⬜ |
 | 7 | LangGraph agent using Rewind | Refund + email flow works end to end | ⬜ |
 | 8 | Crash injector + **first benchmark** (naive LangGraph vs. Rewind, points b–e) | **First real numbers** | ⬜ |
