@@ -320,8 +320,8 @@ Both pass. Update `docs/PROJECT.md` roadmap: Module 6 ✅. Commit.
 - [x] Step 2: `EmailAdapter.execute()` + 2 tests
 - [x] Step 3: `EmailAdapter.lookup()` + 3 tests
 - [x] Step 4: `run_effect()` + 4 tests ⭐ first end-to-end protection
-- [ ] Step 5: Stripe account, `.env` (git-ignored!), test payment script
-- [ ] Step 6: `StripeRefundAdapter.execute()` + tests
+- [x] Step 5: Stripe account, `.env` (git-ignored!), test payment script
+- [x] Step 6: `StripeRefundAdapter.execute()` + tests
 - [ ] Step 7: `lookup()` + `check_preconditions()` + 4 tests
 - [ ] Step 8: Refund twice through Rewind → exactly one refund on Stripe
 
