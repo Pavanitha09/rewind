@@ -315,11 +315,11 @@ Both pass. Update `docs/PROJECT.md` roadmap: Module 6 ✅. Commit.
 
 ## Module 6 Checklist
 
-- [ ] Step 0: Module 5 committed
-- [ ] Step 1: `adapters/base.py` (outcomes, lookup results, `ToolAdapter`)
-- [ ] Step 2: `EmailAdapter.execute()` + 2 tests
-- [ ] Step 3: `EmailAdapter.lookup()` + 3 tests
-- [ ] Step 4: `run_effect()` + 4 tests ⭐ first end-to-end protection
+- [x] Step 0: Module 5 committed
+- [x] Step 1: `adapters/base.py` (outcomes, lookup results, `ToolAdapter`)
+- [x] Step 2: `EmailAdapter.execute()` + 2 tests
+- [x] Step 3: `EmailAdapter.lookup()` + 3 tests
+- [x] Step 4: `run_effect()` + 4 tests ⭐ first end-to-end protection
 - [ ] Step 5: Stripe account, `.env` (git-ignored!), test payment script
 - [ ] Step 6: `StripeRefundAdapter.execute()` + tests
 - [ ] Step 7: `lookup()` + `check_preconditions()` + 4 tests

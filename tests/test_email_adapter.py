@@ -1,7 +1,4 @@
-import json
 import smtplib
-import urllib.parse
-import urllib.request
 
 import pytest
 
@@ -21,14 +18,6 @@ from rewind.adapters.email import EmailAdapter, message_id
 ARGS = {"to": "alice@rewind.test", "subject": "Your refund", "body": "We refunded $30."}
 
 
-def mailpit_count(key):
-    """How many emails with this key's Message-ID are in Mailpit (the ground truth)."""
-    query = urllib.parse.quote("message-id:" + message_id(key).strip("<>"))
-    url = f"http://127.0.0.1:8025/api/v1/search?query={query}"
-    with urllib.request.urlopen(url) as resp:
-        return json.load(resp)["messages_count"]
-
-
 @pytest.fixture
 def key(run_id):
     return f"{run_id}:1"
@@ -40,19 +29,19 @@ def test_message_id_is_stable_and_valid():
     assert ":" not in message_id("run42:1")
 
 
-def test_execute_sends_email(key):
+def test_execute_sends_email(key, mailpit):
     outcome = EmailAdapter().execute(ARGS, key)
 
     assert isinstance(outcome, Success)
     assert outcome.result["message_id"] == message_id(key)
-    assert mailpit_count(key) == 1
+    assert len(mailpit(key)) == 1
 
 
-def test_execute_not_sent_when_connection_refused(key):
+def test_execute_not_sent_when_connection_refused(key, mailpit):
     outcome = EmailAdapter(port=1).execute(ARGS, key)  # nothing listens on port 1
 
     assert isinstance(outcome, NotSent)
-    assert mailpit_count(key) == 0
+    assert len(mailpit(key)) == 0
 
 
 # --- Errors Mailpit never produces, simulated with a fake SMTP server ---------
