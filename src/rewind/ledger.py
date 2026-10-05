@@ -53,7 +53,11 @@ def make_key(run_id: str, step: int) -> str:
 
 
 def intent(
-    conn: psycopg.Connection, run_id: str, step: int, tool_name: str, args: dict[str, Any]
+    conn: psycopg.Connection,
+    run_id: str,
+    step: int,
+    tool_name: str,
+    args: dict[str, Any],
 ) -> IntentResult:
     """Record that `tool_name(args)` is about to happen at this step (status PENDING).
 
@@ -80,7 +84,11 @@ def intent(
     if diverged:
         log.warning(
             "Divergence at %s: ledger has %s(%s), caller asked for %s(%s). Keeping the ledger's.",
-            effect.idempotency_key, effect.tool_name, effect.args, tool_name, args,
+            effect.idempotency_key,
+            effect.tool_name,
+            effect.args,
+            tool_name,
+            args,
         )
     return IntentResult(effect=effect, created=inserted is not None, diverged=diverged)
 
@@ -106,14 +114,18 @@ def _transition(
             WHERE idempotency_key = %s AND status = ANY(%s)
             RETURNING *
             """,
-            (to_status, Jsonb(result) if result is not None else None, error, key, allowed_from),
+            (
+                to_status,
+                Jsonb(result) if result is not None else None,
+                error,
+                key,
+                allowed_from,
+            ),
         ).fetchone()
         if moved is not None:
             return TransitionResult(ok=True, effect=moved)
 
-        current = cur.execute(
-            "SELECT * FROM effects WHERE idempotency_key = %s", (key,)
-        ).fetchone()
+        current = cur.execute("SELECT * FROM effects WHERE idempotency_key = %s", (key,)).fetchone()
     if current is None:
         raise EffectNotFound(key)
     return TransitionResult(ok=False, effect=current)

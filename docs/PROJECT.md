@@ -127,7 +127,7 @@ Every side-effecting tool is registered with a small adapter:
 
 | Method | Purpose | Stripe refund example | Email (Mailpit) example |
 |---|---|---|---|
-| `execute(args, key)` | Perform the effect using the idempotency key | `POST /v1/refunds` with `Idempotency-Key: key` and `metadata.rewind_key = key` | Send via SMTP with `Message-ID: <key@rewind>` |
+| `execute(args, key)` | Perform the effect using the idempotency key | `POST /v1/refunds` with `Idempotency-Key: key` and `metadata.rewind_key = key` | Send via SMTP with `Message-ID: <sha256(key)[:32]@rewind.test>` (keys contain `:`, invalid in a Message-ID) |
 | `lookup(key)` | Did this effect happen? → `Found(result)` / `NotFound` / `Unknown` | List refunds for the PaymentIntent and match `metadata.rewind_key` (**not** Stripe Search, which lags about 1 minute) | Search the Mailpit API for that Message-ID |
 | `check_preconditions(args)` | Is this effect still valid to perform now? | PaymentIntent is `succeeded` and refunded total + amount ≤ charged amount | Recipient still valid; not already notified |
 | `compensate(result, key)` *(optional)* | Undo the effect | Not directly reversible (a refund can't be "un-refunded"); the compensation for a **charge** is a refund | Not compensatable; send a correction email instead (irreversible) |

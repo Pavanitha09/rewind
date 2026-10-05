@@ -97,7 +97,7 @@ class ToolAdapter(Protocol):
 
 **Behavior of `execute()`:**
 1. Build an `EmailMessage` (see your `scripts/send_test_email.py`, it's 80% of the work).
-2. Set `Message-ID` to `<{key}@rewind.test>`. **This is the trick that makes `lookup()` possible in Step 3**: the idempotency key travels inside the email.
+2. Set `Message-ID` from the key. **This is the trick that makes `lookup()` possible in Step 3**: the idempotency key travels inside the email. ⚠️ Keys contain `:`, which is not allowed in a Message-ID (Mailpit silently truncates it), so use a **hash** of the key: `<{sha256(key)[:32]}@rewind.test>`. See `message_id()` in `adapters/email.py`.
 3. Send it with `smtplib.SMTP(...)`, using a `timeout=` (e.g. 10 seconds).
 4. Return the right outcome:
 
@@ -130,7 +130,7 @@ After a crash during sending, Rewind asks: **"Did this email actually arrive?"**
 
 ### What to build
 Add `lookup(self, args, key)` to `EmailAdapter`:
-1. Call Mailpit's search API for the message ID `{key}@rewind.test`.
+1. Call Mailpit's search API with the filter `message-id:<the id from message_id(key), without the < >>` (verified to work: `GET /api/v1/search?query=...`, response field `messages_count`).
 2. If 1 or more messages match → `Found({"message_id": ...})`.
 3. If 0 match → `NotFound()`.
 4. If Mailpit can't be reached → `Undetermined("mailpit unreachable")`.

@@ -16,6 +16,7 @@ def dispatched_key(conn, run_id):
 
 # --- confirm ---------------------------------------------------------------
 
+
 def test_confirm_saves_result(conn, dispatched_key):
     c = confirm(conn, dispatched_key, STRIPE_REPLY)
 
@@ -45,6 +46,7 @@ def test_confirmed_is_final(conn, dispatched_key):
 
 # --- fail ------------------------------------------------------------------
 
+
 def test_fail_records_error_and_is_final(conn, dispatched_key):
     f = fail(conn, dispatched_key, "card_declined")
 
@@ -55,6 +57,7 @@ def test_fail_records_error_and_is_final(conn, dispatched_key):
 
 
 # --- mark_unknown ------------------------------------------------------------
+
 
 def test_unknown_can_later_be_resolved_as_confirmed(conn, dispatched_key):
     u = mark_unknown(conn, dispatched_key, "timeout after 30s")
@@ -87,6 +90,7 @@ def test_unknown_cannot_be_released_for_blind_retry(conn, dispatched_key):
 
 
 # --- release ---------------------------------------------------------------
+
 
 def test_release_returns_to_pending_with_same_key_and_args(conn, dispatched_key):
     r = release(conn, dispatched_key, "429 rate limited")
