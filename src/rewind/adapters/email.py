@@ -5,7 +5,19 @@ import smtplib
 from email.message import EmailMessage
 from typing import Any
 
-from rewind.adapters.base import Failed, NotSent, Outcome, Success, Unknown
+import httpx
+
+from rewind.adapters.base import (
+    Failed,
+    Found,
+    LookupResult,
+    NotFound,
+    NotSent,
+    Outcome,
+    Success,
+    Undetermined,
+    Unknown,
+)
 
 
 def message_id(key: str) -> str:
@@ -63,6 +75,25 @@ class EmailAdapter:
             _close(smtp)
 
         return Success({"message_id": msg["Message-ID"], "to": args["to"]})
+
+    def lookup(self, args: dict[str, Any], key: str) -> LookupResult:
+        """Ask Mailpit whether an email with this key's Message-ID arrived."""
+        mid = message_id(key).strip("<>")
+        url = f"http://{self.host}:{self.api_port}/api/v1/search"
+        try:
+            resp = httpx.get(url, params={"query": f"message-id:{mid}"}, timeout=self.timeout)
+            resp.raise_for_status()
+            count = resp.json()["messages_count"]
+        except (httpx.HTTPError, KeyError, ValueError) as e:
+            return Undetermined(f"could not search Mailpit: {e!r}")
+
+        if count > 0:
+            return Found({"message_id": f"<{mid}>", "count": count})
+        return NotFound()
+
+    def check_preconditions(self, args: dict[str, Any]) -> bool:
+        # Nothing in the outside world can make an email "no longer valid" yet.
+        return True
 
 
 def _close(smtp: smtplib.SMTP) -> None:

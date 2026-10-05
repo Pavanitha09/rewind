@@ -5,6 +5,7 @@ description = "Crash-safe side effects for AI agents: an effect ledger for LangG
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "httpx>=0.28.1",
     "psycopg[binary]>=3.3.6",
 ]
 

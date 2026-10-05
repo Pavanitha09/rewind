@@ -6,7 +6,16 @@ import urllib.request
 import pytest
 
 from rewind.adapters import email as email_module
-from rewind.adapters.base import Failed, NotSent, Success, Unknown
+from rewind.adapters.base import (
+    Failed,
+    Found,
+    NotFound,
+    NotSent,
+    Success,
+    ToolAdapter,
+    Undetermined,
+    Unknown,
+)
 from rewind.adapters.email import EmailAdapter, message_id
 
 ARGS = {"to": "alice@rewind.test", "subject": "Your refund", "body": "We refunded $30."}
@@ -91,3 +100,35 @@ def test_execute_unknown_on_timeout_mid_send(monkeypatch, key):
     outcome = EmailAdapter().execute(ARGS, key)
 
     assert isinstance(outcome, Unknown)
+
+
+# --- lookup ------------------------------------------------------------------
+
+
+def test_lookup_finds_sent_email(key):
+    adapter = EmailAdapter()
+    adapter.execute(ARGS, key)
+
+    result = adapter.lookup(ARGS, key)
+
+    assert isinstance(result, Found)
+    assert result.result["message_id"] == message_id(key)
+
+
+def test_lookup_not_found_for_unknown_key(key):
+    result = EmailAdapter().lookup(ARGS, key)  # nothing was ever sent with this key
+
+    assert isinstance(result, NotFound)
+
+
+def test_lookup_undetermined_when_mailpit_down(key):
+    result = EmailAdapter(api_port=1).lookup(ARGS, key)  # nothing listens on port 1
+
+    assert isinstance(result, Undetermined)
+
+
+def test_email_adapter_follows_the_tool_adapter_contract():
+    adapter: ToolAdapter = EmailAdapter()  # a type checker would flag a missing method here
+
+    assert adapter.name == "send_email"
+    assert adapter.check_preconditions(ARGS) is True
