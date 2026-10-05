@@ -4,7 +4,17 @@ from typing import Any
 
 import stripe
 
-from rewind.adapters.base import Failed, NotSent, Outcome, Success, Unknown
+from rewind.adapters.base import (
+    Failed,
+    Found,
+    LookupResult,
+    NotFound,
+    NotSent,
+    Outcome,
+    Success,
+    Undetermined,
+    Unknown,
+)
 
 
 class StripeRefundAdapter:
@@ -42,3 +52,37 @@ class StripeRefundAdapter:
             return Unknown(f"{type(e).__name__}: {e.user_message or e}")
 
         return Success({"refund_id": refund.id, "amount": refund.amount, "status": refund.status})
+
+    def lookup(self, args: dict[str, Any], key: str) -> LookupResult:
+        """Did a refund tagged with this key happen on this payment?
+
+        Uses the List API, which shows a refund the moment it exists. (Stripe's Search
+        API can lag about a minute, which could make a real refund look missing.)
+        """
+        try:
+            refunds = self.client.v1.refunds.list(
+                params={"payment_intent": args["payment_intent"], "limit": 100}
+            )
+            for refund in refunds.auto_paging_iter():
+                if refund.metadata.to_dict().get("rewind_key") == key:
+                    return Found(
+                        {"refund_id": refund.id, "amount": refund.amount, "status": refund.status}
+                    )
+        except stripe.StripeError as e:
+            return Undetermined(f"{type(e).__name__}: {e.user_message or e}")
+        return NotFound()
+
+    def check_preconditions(self, args: dict[str, Any]) -> bool:
+        """Is this refund still valid now? The payment must have succeeded and still have
+        at least `amount` left that hasn't been refunded (e.g. by a human, during a crash).
+
+        Raises stripe.StripeError if Stripe can't be reached: "couldn't check" is not "no".
+        """
+        payment = self.client.v1.payment_intents.retrieve(
+            args["payment_intent"], params={"expand": ["latest_charge"]}
+        )
+        if payment.status != "succeeded" or payment.latest_charge is None:
+            return False
+        charge = payment.latest_charge
+        remaining = charge.amount_captured - charge.amount_refunded
+        return 0 < args["amount"] <= remaining

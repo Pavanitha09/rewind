@@ -322,7 +322,7 @@ Both pass. Update `docs/PROJECT.md` roadmap: Module 6 ✅. Commit.
 - [x] Step 4: `run_effect()` + 4 tests ⭐ first end-to-end protection
 - [x] Step 5: Stripe account, `.env` (git-ignored!), test payment script
 - [x] Step 6: `StripeRefundAdapter.execute()` + tests
-- [ ] Step 7: `lookup()` + `check_preconditions()` + 4 tests
+- [x] Step 7: `lookup()` + `check_preconditions()` + 4 tests
 - [ ] Step 8: Refund twice through Rewind → exactly one refund on Stripe
 
 **After Module 6:** Module 7 wraps `run_effect()` inside a real LangGraph agent, so an LLM decides the refund and email.
