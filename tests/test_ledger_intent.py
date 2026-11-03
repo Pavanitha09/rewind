@@ -54,3 +54,30 @@ def test_different_steps_get_different_rows(conn, run_id):
     assert r2.created is True
     assert r2.effect.idempotency_key == f"{run_id}:2"
     assert count_rows(conn, run_id) == 2
+
+
+def test_intent_is_committed_even_after_an_earlier_read(conn, run_id):
+    # Regression: a read before intent() used to leave a transaction open, turning the
+    # intent into an uncommitted savepoint that a crash would erase.
+    from rewind.db import connect
+    from rewind.ledger import get_effect, make_key
+
+    get_effect(conn, make_key(run_id, 1))
+    intent(conn, run_id, 1, "send_email", {"to": "a@b.test"})
+
+    with connect() as other:
+        n = other.execute("SELECT count(*) FROM effects WHERE run_id = %s", (run_id,))
+        assert n.fetchone()[0] == 1
+
+
+def test_ledger_refuses_to_write_inside_a_foreign_transaction(run_id):
+    import psycopg
+    import pytest
+
+    from rewind.db import DEFAULT_URL
+    from rewind.ledger import OpenTransaction
+
+    with psycopg.connect(DEFAULT_URL) as c:  # NOT autocommit
+        c.execute("SELECT 1")
+        with pytest.raises(OpenTransaction):
+            intent(c, run_id, 1, "send_email", {})

@@ -9,4 +9,11 @@ DEFAULT_URL = "postgresql://rewind:rewind@127.0.0.1:5432/rewind"
 
 
 def connect() -> psycopg.Connection:
-    return psycopg.connect(os.environ.get("REWIND_DATABASE_URL", DEFAULT_URL))
+    """A connection in autocommit mode.
+
+    The ledger opens its own short transactions (`with conn.transaction():`) and each one
+    must really COMMIT before the tool is called. Without autocommit, any earlier query
+    would silently open a long transaction, and the ledger's blocks would become mere
+    savepoints inside it: the intent would vanish in a crash and row locks would be held.
+    """
+    return psycopg.connect(os.environ.get("REWIND_DATABASE_URL", DEFAULT_URL), autocommit=True)

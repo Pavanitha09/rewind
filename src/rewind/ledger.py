@@ -72,6 +72,20 @@ class FencedOut(Exception):
         self.current = current
 
 
+class OpenTransaction(RuntimeError):
+    """A ledger write was attempted inside a transaction it doesn't own."""
+
+
+def _require_own_transaction(conn: psycopg.Connection) -> None:
+    """Ledger writes must commit before the tool is called. Inside someone else's open
+    transaction they would only be savepoints, lost if the process crashed. Use an
+    autocommit connection (rewind.db.connect)."""
+    if conn.info.transaction_status != psycopg.pq.TransactionStatus.IDLE:
+        raise OpenTransaction(
+            "ledger writes need an idle autocommit connection (see rewind.db.connect)"
+        )
+
+
 def check_fence(conn: psycopg.Connection, fence: Fence | None) -> None:
     """Inside a transaction: raise FencedOut unless `fence` is still the current lease.
 
@@ -111,6 +125,7 @@ def intent(
     If the step already has a row (e.g. after a crash), keep the original row and
     report whether the caller asked for something different (divergence).
     """
+    _require_own_transaction(conn)
     with conn.transaction():
         check_fence(conn, fence)
         inserted = conn.execute(
@@ -166,6 +181,7 @@ def _transition(
     The status check and the update happen in one SQL statement (a guarded update),
     so if several workers try at once, at most one of them succeeds.
     """
+    _require_own_transaction(conn)
     with conn.transaction(), conn.cursor(row_factory=class_row(Effect)) as cur:
         check_fence(conn, fence)
         moved = cur.execute(
