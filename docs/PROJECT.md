@@ -350,7 +350,7 @@ rewind/
 | 3 | Postgres in Docker Compose (persistent volume) | Data survives `down`/`up` | ✅ |
 | 4 | `effects` table + state machine | Constraint tests reject bad rows | ✅ |
 | 5 | Ledger code: `intent()`, `dispatch()`, `confirm()` | Unit tests pass, including guarded transitions | ✅ |
-| 6 | Tool adapters: email + Stripe refund (`execute`, `lookup`, `check_preconditions`) | Calling twice through Rewind → one effect | ⬜ |
+| 6 | Tool adapters: email + Stripe refund (`execute`, `lookup`, `check_preconditions`) | Calling twice through Rewind → one effect | ✅ |
 | 7 | LangGraph agent using Rewind | Refund + email flow works end to end | ⬜ |
 | 8 | Crash injector + **first benchmark** (naive LangGraph vs. Rewind, points b–e) | **First real numbers** | ⬜ |
 | 9 | Recovery manager, fencing (`runs` table), `UNKNOWN` handling, compensation | Zombie and timeout tests pass | ⬜ |
