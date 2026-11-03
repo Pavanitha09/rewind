@@ -2,7 +2,7 @@
 
 > An effect ledger that sits under LangGraph. It guarantees that when an agent crashes and resumes, every real-world action (a refund, an email, a ticket update) happens **exactly once, or is safely undone, or is honestly escalated**. It never happens twice by accident, and it never silently disappears.
 
-**Status:** in progress (started Oct 2026) · **Author:** Pavanitha · **Stack:** Python 3.12, LangGraph, PostgreSQL 17, Docker Compose, Stripe test mode, Mailpit
+**Status:** v1 complete (Oct–Nov 2026); results in `bench/results/` and the README · **Author:** Pavanitha · **Stack:** Python 3.12, LangGraph, PostgreSQL 17, Docker Compose, Stripe test mode, Mailpit
 
 ---
 
@@ -321,21 +321,27 @@ Use **Stripe test mode** and **Mailpit**. The agent handles a customer request: 
 
 ---
 
-## 11. Repository Layout (target)
+## 11. Repository Layout
 ```
 rewind/
-├── docker-compose.yml        # postgres, mailpit (+ toxiproxy later)
-├── sql/                      # numbered migrations (001_create_effects.sql, …)
+├── docker-compose.yml        # postgres, mailpit; temporal under the "bench" profile
+├── sql/                      # numbered migrations 001-004 (effects, runs, snapshot, attempt)
 ├── src/rewind/
-│   ├── ledger.py             # intent / dispatch / confirm, guarded transitions
-│   ├── registry.py           # tool labels + adapters
-│   ├── recovery.py           # resume logic
-│   ├── fencing.py            # leases + tokens
-│   ├── adapters/             # stripe.py, email.py
-│   └── langgraph.py          # integration with LangGraph's tool node
-├── bench/                    # crash injector, scenarios, baselines, results
-├── tests/
-├── scripts/                  # one-off helpers (send_test_email.py)
+│   ├── ledger.py             # intent / dispatch / confirm …, guarded + fenced transitions
+│   ├── runner.py             # run_effect(): one effect, at most once; failpoints a-f
+│   ├── recovery.py           # lookup-driven recovery, backoff, escalation
+│   ├── fencing.py            # leases, fencing tokens, heartbeat
+│   ├── compensation.py       # saga: undo confirmed effects newest-first
+│   ├── registry.py           # tool labels (pure/idempotent/compensatable/irreversible)
+│   ├── langgraph_tools.py    # RewindToolNode: drop-in for LangGraph's ToolNode
+│   ├── agent.py              # the support agent + scripted stand-in LLM
+│   ├── claude_model.py       # optional real Claude model (Anthropic SDK)
+│   ├── failpoints.py         # named crash/freeze injection points
+│   ├── migrate.py            # applies sql/ in order
+│   └── adapters/             # email.py, stripe_refund.py, stripe_charge.py
+├── bench/                    # fake Stripe, six systems, orchestrator, report, overhead
+├── tests/                    # unit, integration (real Stripe + Mailpit), property-based
+├── scripts/                  # run_agent.py demo, small helpers
 └── docs/PROJECT.md           # this file
 ```
 
@@ -351,13 +357,25 @@ rewind/
 | 4 | `effects` table + state machine | Constraint tests reject bad rows | ✅ |
 | 5 | Ledger code: `intent()`, `dispatch()`, `confirm()` | Unit tests pass, including guarded transitions | ✅ |
 | 6 | Tool adapters: email + Stripe refund (`execute`, `lookup`, `check_preconditions`) | Calling twice through Rewind → one effect | ✅ |
-| 7 | LangGraph agent using Rewind | Refund + email flow works end to end | ⬜ |
-| 8 | Crash injector + **first benchmark** (naive LangGraph vs. Rewind, points b–e) | **First real numbers** | ⬜ |
-| 9 | Recovery manager, fencing (`runs` table), `UNKNOWN` handling, compensation | Zombie and timeout tests pass | ⬜ |
-| 10 | Baselines (agent-ledger, Temporal, DBOS), full benchmark, README, diagram, blog post, demo video | Results table published | ⬜ |
+| 7 | LangGraph agent using Rewind | Refund + email flow works end to end | ✅ |
+| 8 | Crash injector + **first benchmark** (naive LangGraph vs. Rewind, points b–e) | **First real numbers** | ✅ |
+| 9 | Recovery manager, fencing (`runs` table), `UNKNOWN` handling, compensation | Zombie and timeout tests pass | ✅ |
+| 10 | Baselines (agent-ledger, Temporal, DBOS), full benchmark, README, diagram, blog post, demo video | Results table published | ✅ (demo video: script in `docs/demo-script.md`, recording still to do) |
 | Stretch | Model-output replay, tool-label verification harness, OpenTelemetry dashboards, more sandboxes | — | ⬜ |
 
 **Target:** first benchmark numbers (Module 8) by mid/late October 2026 for internship recruiting.
+
+---
+
+### 12.1 What changed during the build (and why)
+
+Building and benchmarking surfaced five things the original design missed. Each is fixed and tested.
+
+1. **A Stripe key can be "poisoned" by a 500.** Stripe stores and replays a key's first response, *including a 500*, for 24h. So an effect that got a 500 *before* Stripe did anything could never be retried under its key. Fix: the ledger key never changes, but after an `UNKNOWN` effect is **proven absent** by lookup, the transport key becomes `key~n` (migration 004, `ledger.reopen`). A `DISPATCHED` effect (request possibly still in flight) keeps its key, so Stripe can still dedupe it.
+2. **Precondition checks need a "before" picture.** "Is there $30 left to refund?" doesn't catch "a human already refunded the customer". At intent time, adapters may record a `snapshot` (migration 003). On resume, `check_preconditions(args, snapshot)` asks whether the world changed since the agent decided.
+3. **Uncommitted intents (a real bug, found by the zombie benchmark).** In psycopg's default mode, a read before `intent()` opened a transaction, so later `with conn.transaction()` blocks were only savepoints. Intents weren't durable, and a frozen worker held the lease lock. Stripe's own idempotency masked it within 24h. Fix: autocommit connections, plus the ledger refuses to write inside a transaction it doesn't own (regression tests in `test_ledger_intent.py`).
+4. **Fencing has a residual window.** A worker re-checks its lease right before calling the tool, but a freeze *between that check and the request* can't be stopped from Rewind's side. Only the outside service could close it, by rejecting stale tokens. Stripe's idempotency key absorbs it for refunds, but email has no such protection. The benchmark's `zombie_email` scenario measures exactly this window and reports it.
+5. **Toxiproxy wasn't needed.** "Killed mid-request" is reproduced more precisely by the fake Stripe committing and then delaying its response while a timer kills the client.
 
 ---
 
@@ -372,9 +390,9 @@ rewind/
 
 ---
 
-## 14. Resume Bullets (fill in real numbers after the benchmark)
-- *Built **Rewind**, a crash-safe side-effect ledger for LangGraph agents (Python, PostgreSQL) using intent→dispatch→confirm logging, step-derived idempotency keys, and fencing tokens. Reduced duplicate irreversible actions from ⟨X⟩ to ⟨0⟩ per 1,000 injected crashes versus LangGraph's checkpointer on Stripe test-mode refunds.*
-- *Designed a crash-injection benchmark (⟨N⟩ seeded kills at 7 crash points, effects counted from Stripe and Mailpit APIs) comparing LangGraph, agent-ledger, Temporal, and DBOS. Rewind was the only system with zero duplicates under LLM argument regeneration and >24h pauses, at ⟨<N ms⟩ median overhead per call.*
+## 14. Resume Bullets (real numbers from the Nov 2026 benchmark)
+- *Built **Rewind**, a crash-safe side-effect ledger for LangGraph agents (Python, PostgreSQL) using intent→dispatch→confirm logging, step-derived idempotency keys, lookup-based recovery, and fencing tokens. Cut duplicate Stripe refunds from 500–667 to 0 per 1,000 injected crashes versus LangGraph's Postgres checkpointer, at 3.4 ms median overhead per tool call.*
+- *Designed a crash-injection benchmark (2,600 seeded trials, 13 failure scenarios, effects counted from the Stripe and Mailpit APIs) comparing LangGraph, agent-ledger, Temporal, and DBOS. Rewind was the only system correct when the world changed during downtime, after a >24h pause, and on ambiguous 500s/timeouts. The benchmark also exposed and fixed a durability bug in my own ledger.*
 
 ---
 

@@ -1,0 +1,86 @@
+{
+  "headline": {
+    "langgraph (exit)": {
+      "n": 120,
+      "dup_refund": 666.6666666666666,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 33.333333333333336
+    },
+    "langgraph (sync)": {
+      "n": 120,
+      "dup_refund": 500.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 50.0
+    },
+    "langgraph+callid (exit)": {
+      "n": 120,
+      "dup_refund": 666.6666666666666,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 33.333333333333336
+    },
+    "langgraph+callid (sync)": {
+      "n": 120,
+      "dup_refund": 166.66666666666666,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 83.33333333333333
+    },
+    "agent-ledger (exit)": {
+      "n": 120,
+      "dup_refund": 408.3333333333333,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 59.166666666666664
+    },
+    "agent-ledger (sync)": {
+      "n": 120,
+      "dup_refund": 166.66666666666666,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 83.33333333333333
+    },
+    "temporal": {
+      "n": 120,
+      "dup_refund": 166.66666666666666,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 83.33333333333333
+    },
+    "dbos": {
+      "n": 120,
+      "dup_refund": 166.66666666666666,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 83.33333333333333
+    },
+    "rewind (exit)": {
+      "n": 120,
+      "dup_refund": 0.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 100.0
+    },
+    "rewind (sync)": {
+      "n": 120,
+      "dup_refund": 0.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 100.0
+    }
+  },
+  "trials": 2600,
+  "valid": 2600
+}
