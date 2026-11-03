@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: rewind
+          POSTGRES_PASSWORD: rewind
+          POSTGRES_DB: rewind
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rewind" --health-interval 2s --health-retries 20
+      mailpit:
+        image: axllent/mailpit:v1.31.3
+        ports: ["1025:1025", "8025:8025"]
+    env:
+      REWIND_DATABASE_URL: postgresql://rewind:rewind@127.0.0.1:5432/rewind
+      # Set this repository secret to also run the real Stripe test-mode tests.
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --all-groups
+      - run: uvx ruff check src tests bench scripts
+      - run: uv run python -m rewind.migrate
+      - run: uv run pytest -q
