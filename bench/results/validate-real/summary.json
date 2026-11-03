@@ -1,0 +1,86 @@
+{
+  "headline": {
+    "langgraph (exit)": {
+      "n": 12,
+      "dup_refund": 500.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 50.0
+    },
+    "langgraph (sync)": {
+      "n": 12,
+      "dup_refund": 250.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 75.0
+    },
+    "langgraph+callid (exit)": {
+      "n": 12,
+      "dup_refund": 500.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 50.0
+    },
+    "langgraph+callid (sync)": {
+      "n": 12,
+      "dup_refund": 0.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 100.0
+    },
+    "agent-ledger (exit)": {
+      "n": 12,
+      "dup_refund": 333.3333333333333,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 66.66666666666667
+    },
+    "agent-ledger (sync)": {
+      "n": 12,
+      "dup_refund": 0.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 100.0
+    },
+    "temporal": {
+      "n": 12,
+      "dup_refund": 0.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 100.0
+    },
+    "dbos": {
+      "n": 12,
+      "dup_refund": 0.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 100.0
+    },
+    "rewind (exit)": {
+      "n": 12,
+      "dup_refund": 0.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 100.0
+    },
+    "rewind (sync)": {
+      "n": 12,
+      "dup_refund": 0.0,
+      "dup_email": 0.0,
+      "lost_refund": 0.0,
+      "lost_email": 0.0,
+      "correct": 100.0
+    }
+  },
+  "trials": 240,
+  "valid": 240
+}

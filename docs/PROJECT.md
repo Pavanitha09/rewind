@@ -391,7 +391,7 @@ Building and benchmarking surfaced five things the original design missed. Each 
 ---
 
 ## 14. Resume Bullets (real numbers from the Nov 2026 benchmark)
-- *Built **Rewind**, a crash-safe side-effect ledger for LangGraph agents (Python, PostgreSQL) using intent→dispatch→confirm logging, step-derived idempotency keys, lookup-based recovery, and fencing tokens. Cut duplicate Stripe refunds from 500–667 to 0 per 1,000 injected crashes versus LangGraph's Postgres checkpointer, at 3.4 ms median overhead per tool call.*
+- *Built **Rewind**, a crash-safe side-effect ledger for LangGraph agents (Python, PostgreSQL) using intent→dispatch→confirm logging, step-derived idempotency keys, lookup-based recovery, and fencing tokens. Cut duplicate Stripe refunds from 500–667 to 0 per 1,000 injected crashes versus LangGraph's Postgres checkpointer (Stripe-compatible sandbox, validated on Stripe test mode), at 3.4 ms median overhead per tool call.*
 - *Designed a crash-injection benchmark (2,600 seeded trials, 13 failure scenarios, effects counted from the Stripe and Mailpit APIs) comparing LangGraph, agent-ledger, Temporal, and DBOS. Rewind was the only system correct when the world changed during downtime, after a >24h pause, and on ambiguous 500s/timeouts. The benchmark also exposed and fixed a durability bug in my own ledger.*
 
 ---

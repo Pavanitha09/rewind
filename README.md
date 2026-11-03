@@ -83,7 +83,7 @@ The full design is in [`docs/PROJECT.md`](docs/PROJECT.md). Section 12.1 covers 
 - **Recovery takes longer** for systems that must wait out a dead worker: Rewind waits for the 2s lease to expire (2.2s p50), and Temporal waits for its activity and workflow-task timeouts (15s p50). All of these are tunable.
 - **Caveats.** The "LLM" is a seeded scripted model, so plan-level divergence on resume isn't tested. Everything ran on one laptop. Baselines use their documented idempotency patterns but weren't individually tuned. Tools report errors back to the LLM, a common agent pattern. A Temporal or DBOS step that instead retried internally under the same key would avoid the duplicate after a 500, but would keep receiving Stripe's stored 500 for 24h: stuck, not duplicated. The bulk runs use a [fake Stripe](bench/fakestripe.py) that implements Stripe's idempotency semantics; see the real-Stripe check below.
 
-<!-- REAL-STRIPE -->
+**Checked on real Stripe test mode.** The 8 scenarios that don't need injected faults or time travel were re-run against the real Stripe API: 240 trials, 3 per cell ([`bench/results/validate-real/summary.md`](bench/results/validate-real/summary.md)). **79 of 80 cells match the fake's outcome.** The exception is agent-ledger in `exit` mode at crash point (d): 3/3 duplicates on real Stripe versus 12/20 on the fake. Its key depends on whether the regenerated call happens to repeat the same optional argument. Rewind was correct in all 42 of its real-Stripe trials outside `zombie_email` (the known gap above, 0/6 there).
 
 ## Try it
 
@@ -97,7 +97,7 @@ uv run python scripts/run_agent.py --crash d --naive   # plain LangGraph: refund
 uv run python scripts/run_agent.py --crash d           # Rewind: refunds once
 uv run python scripts/run_agent.py --claude            # a real Claude model decides (ANTHROPIC_API_KEY)
 
-uv run pytest -q                           # 100+ tests; Stripe ones skip without a key
+uv run pytest -q                           # 93 tests; the real-Stripe ones skip without a key
 ```
 
 The benchmark: see [`bench/README.md`](bench/README.md).
