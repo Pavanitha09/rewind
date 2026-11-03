@@ -20,5 +20,16 @@ services:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
 
+  # Benchmark only (Module 8/10): the Temporal dev server, a baseline we compare against.
+  # Start with:  docker compose --profile bench up -d
+  temporal:
+    image: temporalio/temporal:1.9.1
+    container_name: rewind-temporal
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--headless"]
+    ports:
+      - "127.0.0.1:7233:7233"
+    profiles: ["bench"]
+
 volumes:
   pgdata:
+

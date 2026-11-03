@@ -46,7 +46,7 @@ def main() -> None:
 
     client = stripe.StripeClient(os.environ["STRIPE_SECRET_KEY"])
     pi = client.v1.payment_intents.create(params={
-        "amount": 5000, "currency": "usd", "payment_method": "pm_card_visa", "confirm": True,
+        "amount": 10000, "currency": "usd", "payment_method": "pm_card_visa", "confirm": True,
         "automatic_payment_methods": {"enabled": True, "allow_redirects": "never"},
     }).id  # fmt: skip
     run_id, to = f"demo-{uuid.uuid4().hex[:8]}", f"demo-{uuid.uuid4().hex[:8]}@rewind.test"
@@ -75,13 +75,14 @@ def main() -> None:
 
 
 def run_worker(a, run_id: str, pi: str, to: str, incarnation: str) -> None:
-    from langgraph.prebuilt import ToolNode
-
     reg = support_registry(os.environ["STRIPE_SECRET_KEY"])
-    if a.naive:
-        from bench.systems.naive import naive_tools  # plain tools, no ledger
+    if a.naive:  # plain tools, no ledger (the benchmark's "langgraph" system)
+        from bench.common import Trial
+        from bench.systems.langgraph_family import naive_node
 
-        tool_node = ToolNode(naive_tools(os.environ["STRIPE_SECRET_KEY"], None, key_mode="none"))
+        trial = Trial(run_id, "langgraph", a.durability, "demo", 0, pi, to, None,
+                      os.environ["STRIPE_SECRET_KEY"])  # fmt: skip
+        tool_node = naive_node(trial)
     else:
         tool_node = RewindToolNode(reg)
     if a.claude:

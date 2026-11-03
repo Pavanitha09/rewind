@@ -13,6 +13,7 @@ The "LLM" is pluggable:
 - `rewind.claude_model.ClaudeChatModel`: a real Claude model, for the live demo.
 """
 
+import hashlib
 import json
 import random
 import re
@@ -161,6 +162,9 @@ class ScriptedSupportModel(BaseChatModel):
     incarnation: int = 0
     jitter: bool = True
     max_refund_attempts: int = 2  # "you may retry once"
+    # Real LLM tool-call ids are globally unique. Wording follows the seed (so every system
+    # in the benchmark faces the same "LLM"), but ids also mix in this per-run salt.
+    call_id_salt: str = ""
 
     @property
     def _llm_type(self) -> str:
@@ -181,7 +185,12 @@ class ScriptedSupportModel(BaseChatModel):
         to = re.search(r"([\w.+-]+@[\w-]+(?:\.[\w-]+)+)", request).group(1)
         turn = sum(isinstance(m, AIMessage) for m in messages)
         rng = self._rng(turn)
-        call_id = f"call_{rng.getrandbits(48):012x}"
+        call_id = (
+            "call_"
+            + hashlib.sha256(
+                f"{self.call_id_salt}:{self.seed}:{self.incarnation}:{turn}".encode()
+            ).hexdigest()[:16]
+        )
 
         refunds = _tool_results(messages, "stripe_refund")
         emails = _tool_results(messages, "send_email")
