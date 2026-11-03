@@ -70,7 +70,11 @@ class ToolAdapter(Protocol):
     name: str
 
     def execute(self, args: dict[str, Any], key: str) -> Outcome:
-        """Call the tool, passing `key` so the tool can recognise retries."""
+        """Call the tool, passing `key` so the tool can recognise retries.
+
+        Adapters may also accept `attempt: int = 0` (how many times a lookup proved an
+        earlier send never happened) to derive a fresh transport key for re-sends.
+        """
 
     def lookup(self, args: dict[str, Any], key: str) -> LookupResult:
         """Check whether the effect tagged with `key` exists in the outside world."""

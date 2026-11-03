@@ -19,7 +19,7 @@ from rewind.adapters.base import (
     Undetermined,
     Unknown,
 )
-from rewind.adapters.stripe_refund import make_client
+from rewind.adapters.stripe_refund import make_client, transport_key
 from rewind.ledger import Effect
 
 
@@ -36,7 +36,7 @@ class StripeChargeAdapter:
         self.client = make_client(api_key, base_url, timeout)
         self.payment_method = payment_method
 
-    def execute(self, args: dict[str, Any], key: str) -> Outcome:
+    def execute(self, args: dict[str, Any], key: str, attempt: int = 0) -> Outcome:
         """Charge. args: {"customer": "cus_...", "amount": cents, "currency"?: "usd"}."""
         try:
             pi = self.client.v1.payment_intents.create(
@@ -49,7 +49,7 @@ class StripeChargeAdapter:
                     "automatic_payment_methods": {"enabled": True, "allow_redirects": "never"},
                     "metadata": {"rewind_key": key},
                 },
-                options={"idempotency_key": key},
+                options={"idempotency_key": transport_key(key, attempt)},
             )
         except (stripe.RateLimitError, stripe.AuthenticationError, stripe.PermissionError) as e:
             return NotSent(f"{type(e).__name__}: {e.user_message or e}")

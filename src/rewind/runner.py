@@ -137,9 +137,17 @@ def _send(conn: psycopg.Connection, effect: Effect, adapter: ToolAdapter, fence)
 
     # Use the args saved in the ledger, not the caller's: after a crash the LLM may
     # have regenerated different ones.
-    outcome = adapter.execute(d.effect.args, key)
+    outcome = _execute(adapter, d.effect)
     failpoint(f"{adapter.name}:d")  # the tool did it, but the ledger doesn't know yet
     return _record(conn, key, outcome, fence)
+
+
+def _execute(adapter: ToolAdapter, effect: Effect) -> Outcome:
+    """Call the tool. Adapters that accept `attempt` get it, so they can derive a fresh
+    transport key for re-sends (see ledger.reopen)."""
+    if "attempt" in inspect.signature(adapter.execute).parameters:
+        return adapter.execute(effect.args, effect.idempotency_key, attempt=effect.attempt)
+    return adapter.execute(effect.args, effect.idempotency_key)
 
 
 def _preconditions_hold(adapter: ToolAdapter, effect: Effect) -> bool:

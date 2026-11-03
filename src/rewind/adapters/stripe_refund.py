@@ -17,6 +17,13 @@ from rewind.adapters.base import (
 )
 
 
+def transport_key(key: str, attempt: int = 0) -> str:
+    """The Idempotency-Key header for a send. The ledger key for attempt 0, then
+    "<key>~<n>" after a lookup proved earlier attempts never happened. The metadata tag
+    (used by lookup) is always the plain ledger key."""
+    return key if attempt == 0 else f"{key}~{attempt}"
+
+
 def make_client(
     api_key: str, base_url: str | None = None, timeout: float | None = None
 ) -> stripe.StripeClient:
@@ -37,7 +44,7 @@ class StripeRefundAdapter:
     ) -> None:
         self.client = make_client(api_key, base_url, timeout)
 
-    def execute(self, args: dict[str, Any], key: str) -> Outcome:
+    def execute(self, args: dict[str, Any], key: str, attempt: int = 0) -> Outcome:
         """Refund. args: {"payment_intent": "pi_...", "amount": cents, "reason"?: str}."""
         params: dict[str, Any] = {
             "payment_intent": args["payment_intent"],
@@ -52,7 +59,7 @@ class StripeRefundAdapter:
             refund = self.client.v1.refunds.create(
                 params=params,
                 # Stripe's built-in duplicate protection: same key -> same refund.
-                options={"idempotency_key": key},
+                options={"idempotency_key": transport_key(key, attempt)},
             )
         except (stripe.RateLimitError, stripe.AuthenticationError, stripe.PermissionError) as e:
             # Stripe rejected the request before doing anything. Retry later (after

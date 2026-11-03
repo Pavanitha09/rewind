@@ -128,3 +128,24 @@ def test_human_refund_during_downtime_stops_the_agent_refund(
 
     assert effect.status == "FAILED"
     assert [r.amount for r in stripe_refunds(payment_intent)] == [3000]  # only the human's
+
+
+def test_unknown_then_proven_absent_resends_with_fresh_transport_attempt(conn, run_id):
+    # A 500 *before* the tool did anything: lookup proves it never happened, so it is
+    # re-sent, as attempt 1 (a fresh Stripe idempotency key; the old one replays the 500).
+    adapter = AttemptAdapter(outcomes=[Unknown("500")], lookups=[NotFound()])
+
+    effect = run_effect(conn, run_id, 1, adapter, ARGS, recover=True, policy=FAST)
+
+    assert effect.status == "CONFIRMED"
+    assert adapter.attempts == [0, 1]
+
+
+class AttemptAdapter(FakeAdapter):
+    def __init__(self, **kw):
+        super().__init__(**kw)
+        self.attempts = []
+
+    def execute(self, args, key, attempt=0):
+        self.attempts.append(attempt)
+        return super().execute(args, key)

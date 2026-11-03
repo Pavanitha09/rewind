@@ -29,6 +29,7 @@ class Effect:
     updated_at: datetime
     fencing_token: int | None = None  # the lease token of the worker that last wrote it
     snapshot: dict[str, Any] | None = None  # the world when the intent was recorded
+    attempt: int = 0  # bumped when an UNKNOWN effect is proven absent and re-sent
 
 
 @dataclass(frozen=True)
@@ -158,6 +159,7 @@ def _transition(
     result: dict[str, Any] | None = None,
     error: str | None = None,
     fence: Fence | None = None,
+    bump_attempt_from_unknown: bool = False,
 ) -> TransitionResult:
     """Move an effect to `to_status`, but only if it is currently in one of `allowed_from`.
 
@@ -170,7 +172,8 @@ def _transition(
             """
             UPDATE effects
             SET status = %s, result = COALESCE(%s, result), error = %s, updated_at = now(),
-                fencing_token = COALESCE(%s, fencing_token)
+                fencing_token = COALESCE(%s, fencing_token),
+                attempt = attempt + CASE WHEN %s AND status = 'UNKNOWN' THEN 1 ELSE 0 END
             WHERE idempotency_key = %s AND status = ANY(%s)
             RETURNING *
             """,
@@ -179,6 +182,7 @@ def _transition(
                 Jsonb(result) if result is not None else None,
                 error,
                 fence.token if fence else None,
+                bump_attempt_from_unknown,
                 key,
                 allowed_from,
             ),
@@ -243,9 +247,22 @@ def reopen(
 ) -> TransitionResult:
     """DISPATCHED/UNKNOWN -> PENDING, after a lookup PROVED the effect never happened.
 
-    Used only by recovery. The effect is then dispatched again with the same key and args.
+    Used only by recovery. The effect is then dispatched again with the same args.
+
+    From UNKNOWN, `attempt` is bumped so the retry uses a fresh transport key: the first
+    request finished with an ambiguous error, and services like Stripe replay a key's
+    stored response (even a 500) for 24h. From DISPATCHED the request may still be in
+    flight, so the SAME transport key is reused and the service can dedupe it.
     """
-    return _transition(conn, key, "PENDING", ["DISPATCHED", "UNKNOWN"], error=reason, fence=fence)
+    return _transition(
+        conn,
+        key,
+        "PENDING",
+        ["DISPATCHED", "UNKNOWN"],
+        error=reason,
+        fence=fence,
+        bump_attempt_from_unknown=True,
+    )
 
 
 def abandon(
