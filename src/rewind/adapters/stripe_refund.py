@@ -17,23 +17,40 @@ from rewind.adapters.base import (
 )
 
 
+def make_client(
+    api_key: str, base_url: str | None = None, timeout: float | None = None
+) -> stripe.StripeClient:
+    """A Stripe client, optionally pointed at a local fake Stripe (base_url) for benchmarks."""
+    kwargs: dict[str, Any] = {}
+    if base_url:
+        kwargs["base_addresses"] = {"api": base_url}
+    if timeout:
+        kwargs["http_client"] = stripe.RequestsClient(timeout=timeout)
+    return stripe.StripeClient(api_key, **kwargs)
+
+
 class StripeRefundAdapter:
     name = "stripe_refund"
 
-    def __init__(self, api_key: str) -> None:
-        self.client = stripe.StripeClient(api_key)
+    def __init__(
+        self, api_key: str, base_url: str | None = None, timeout: float | None = None
+    ) -> None:
+        self.client = make_client(api_key, base_url, timeout)
 
     def execute(self, args: dict[str, Any], key: str) -> Outcome:
-        """Refund. args: {"payment_intent": "pi_...", "amount": cents}."""
+        """Refund. args: {"payment_intent": "pi_...", "amount": cents, "reason"?: str}."""
+        params: dict[str, Any] = {
+            "payment_intent": args["payment_intent"],
+            "amount": args["amount"],
+            # Our own tag, so lookup() can find this refund even after Stripe
+            # has forgotten the idempotency key (~24h).
+            "metadata": {"rewind_key": key},
+        }
+        if args.get("reason"):
+            params["reason"] = args["reason"]
         try:
             refund = self.client.v1.refunds.create(
-                params={
-                    "payment_intent": args["payment_intent"],
-                    "amount": args["amount"],
-                    # Our own tag, so lookup() can find this refund even after Stripe
-                    # has forgotten the idempotency key (~24h).
-                    "metadata": {"rewind_key": key},
-                },
+                params=params,
                 # Stripe's built-in duplicate protection: same key -> same refund.
                 options={"idempotency_key": key},
             )
@@ -72,17 +89,39 @@ class StripeRefundAdapter:
             return Undetermined(f"{type(e).__name__}: {e.user_message or e}")
         return NotFound()
 
-    def check_preconditions(self, args: dict[str, Any]) -> bool:
+    def _charge(self, payment_intent: str):
+        payment = self.client.v1.payment_intents.retrieve(
+            payment_intent, params={"expand": ["latest_charge"]}
+        )
+        if payment.status != "succeeded" or payment.latest_charge is None:
+            return None
+        return payment.latest_charge
+
+    def snapshot(self, args: dict[str, Any]) -> dict[str, Any] | None:
+        """How much of the payment was already refunded when the agent decided to refund.
+
+        Returns None if Stripe can't be reached (then only the basic checks apply later).
+        """
+        try:
+            charge = self._charge(args["payment_intent"])
+        except stripe.StripeError:
+            return None
+        return {"amount_refunded": charge.amount_refunded} if charge else None
+
+    def check_preconditions(
+        self, args: dict[str, Any], snapshot: dict[str, Any] | None = None
+    ) -> bool:
         """Is this refund still valid now? The payment must have succeeded and still have
-        at least `amount` left that hasn't been refunded (e.g. by a human, during a crash).
+        at least `amount` left that hasn't been refunded. With a snapshot, also: nobody
+        else has refunded this payment since the agent decided (e.g. a human, while the
+        agent was down), because then the customer may already have their money back.
 
         Raises stripe.StripeError if Stripe can't be reached: "couldn't check" is not "no".
         """
-        payment = self.client.v1.payment_intents.retrieve(
-            args["payment_intent"], params={"expand": ["latest_charge"]}
-        )
-        if payment.status != "succeeded" or payment.latest_charge is None:
+        charge = self._charge(args["payment_intent"])
+        if charge is None:
             return False
-        charge = payment.latest_charge
+        if snapshot is not None and charge.amount_refunded != snapshot["amount_refunded"]:
+            return False
         remaining = charge.amount_captured - charge.amount_refunded
         return 0 < args["amount"] <= remaining

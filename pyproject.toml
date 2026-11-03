@@ -6,9 +6,17 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.28.1",
+    "langchain-core>=1.7.4",
+    "langgraph>=1.2.19",
+    "langgraph-checkpoint-postgres>=3.2.0",
     "psycopg[binary]>=3.3.6",
     "python-dotenv>=1.2.4",
     "stripe>=16.0.0",
+]
+
+[project.optional-dependencies]
+llm = [
+    "anthropic>=2.4.0",
 ]
 
 [build-system]
@@ -16,7 +24,13 @@ requires = ["uv_build>=0.12.21,<0.13.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
+bench = [
+    "agent-ledger>=0.2.1",
+    "dbos>=3.4.0",
+    "temporalio>=1.35.0",
+]
 dev = [
+    "hypothesis>=6.170.14",
     "pytest>=9.1.1",
 ]
 

@@ -83,9 +83,7 @@ def test_different_tool_at_same_step_is_refused(conn, run_id):
 
 
 @needs_stripe
-def test_refund_twice_through_rewind_makes_one_refund(
-    conn, run_id, payment_intent, stripe_refunds
-):
+def test_refund_twice_through_rewind_makes_one_refund(conn, run_id, payment_intent, stripe_refunds):
     adapter = StripeRefundAdapter(os.environ["STRIPE_SECRET_KEY"])
     args = {"payment_intent": payment_intent, "amount": 3000}
 
@@ -105,7 +103,9 @@ def test_regenerated_refund_amount_keeps_original(conn, run_id, payment_intent, 
     run_effect(conn, run_id, 1, adapter, {"payment_intent": payment_intent, "amount": 3000})
 
     # After a resume, the LLM regenerates the call with a different amount.
-    effect = run_effect(conn, run_id, 1, adapter, {"payment_intent": payment_intent, "amount": 3500})
+    effect = run_effect(
+        conn, run_id, 1, adapter, {"payment_intent": payment_intent, "amount": 3500}
+    )
 
     assert effect.args["amount"] == 3000
     refunds = stripe_refunds(payment_intent)

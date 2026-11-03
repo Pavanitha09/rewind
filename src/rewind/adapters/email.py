@@ -91,7 +91,9 @@ class EmailAdapter:
             return Found({"message_id": f"<{mid}>", "count": count})
         return NotFound()
 
-    def check_preconditions(self, args: dict[str, Any]) -> bool:
+    def check_preconditions(
+        self, args: dict[str, Any], snapshot: dict[str, Any] | None = None
+    ) -> bool:
         # Nothing in the outside world can make an email "no longer valid" yet.
         return True
 

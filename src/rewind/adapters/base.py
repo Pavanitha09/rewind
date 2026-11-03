@@ -75,5 +75,12 @@ class ToolAdapter(Protocol):
     def lookup(self, args: dict[str, Any], key: str) -> LookupResult:
         """Check whether the effect tagged with `key` exists in the outside world."""
 
-    def check_preconditions(self, args: dict[str, Any]) -> bool:
-        """Return True if the effect still makes sense to perform now."""
+    def check_preconditions(
+        self, args: dict[str, Any], snapshot: dict[str, Any] | None = None
+    ) -> bool:
+        """Return True if the effect still makes sense to perform now.
+
+        `snapshot` is what `snapshot(args)` returned when the intent was recorded (if the
+        adapter has that optional method), so the adapter can ask "did the world change
+        since the agent decided this?"
+        """
