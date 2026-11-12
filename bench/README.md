@@ -68,6 +68,23 @@ uv run python -m bench.overhead --n 2000       # Rewind's per-call overhead
 
 Results go to `bench/results/<name>/`: `trials.jsonl` (one JSON line per trial), `summary.md`, and `logs/` (git-ignored).
 
+## What the results mean
+
+The tables are in the [main README](../README.md#results) and [`results/full-fake/summary.md`](results/full-fake/summary.md) (including `exit` mode).
+
+- **Temporal and DBOS are excellent at plain crashes.** Their stable workflow+step keys plus Stripe's idempotency make crash points a–e safe. Rewind's edge is elsewhere:
+  - **The world changed while the agent was down.** No other system re-checks it before resuming.
+  - **Keys outlived by a pause.** Stripe forgets a key after 24h; Rewind finds the refund by its metadata tag instead.
+  - **Ambiguous errors.** On a 500 or timeout, the others hand the error to the LLM, whose retry is a *new* step with a new key. Rewind looks the refund up first.
+- **Rewind fails `zombie_email`, and so do most others.** A worker that freezes *after* re-checking its lease and *before* sending can still send once it wakes. Rewind can't close that window from the client side; only the email server could, by checking fencing tokens. For refunds, Stripe's idempotency key covers the same window. **Temporal passed** because it cancels the timed-out activity's thread the moment the worker resumes.
+- **agent-ledger** keys effects by a hash of the arguments. That protects it whenever the LLM repeats the *exact* same call, but it also caches failures: a retry after a 500-with-no-refund returns the cached failure (no refund in 13/20). When the LLM varies an optional argument, the key changes and the protection is gone.
+- **Recovery takes longer** for systems that must wait out a dead worker: Rewind waits for the 2s lease to expire (2.2s p50), and Temporal waits for its activity and workflow-task timeouts (15s p50). All of these are tunable.
+- **Error handling.** Tools report errors back to the LLM, a common agent pattern. A Temporal or DBOS step that instead retried internally under the same key would avoid the duplicate after a 500, but would keep receiving Stripe's stored 500 for 24h: stuck, not duplicated.
+- **Overhead.** Rewind adds 3.4 ms median (6.4 ms p99) per tool call, 4.4 ms with fencing: three committed Postgres transactions against a local database ([`results/overhead.json`](results/overhead.json)). The Stripe adapter's precondition snapshot costs one extra Stripe read on top.
+- **Real Stripe test mode.** The 8 scenarios that don't need injected faults or time travel were re-run against the real Stripe API: 240 trials, 3 per cell ([`results/validate-real/summary.md`](results/validate-real/summary.md)). 79 of 80 cells match the fake's outcome. The exception is agent-ledger in `exit` mode at crash point (d): 3/3 duplicates on real Stripe versus 12/20 on the fake, because its key depends on whether the regenerated call happens to repeat the same optional argument. Rewind was correct in all 42 of its real-Stripe trials outside `zombie_email` (the known gap, 0/6 there).
+
+The design changes the benchmark forced are in [`docs/PROJECT.md`](../docs/PROJECT.md) §12.1.
+
 ## Known limits (read before quoting numbers)
 
 - **Single machine.** Postgres, Mailpit, Temporal and the fake Stripe all run on one laptop. Latencies aren't production latencies.
