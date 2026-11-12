@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="880" viewBox="0 0 1200 880" role="img" aria-labelledby="title desc">
+  <title id="title">Same crash, two outcomes</title>
+  <desc id="desc">A support agent refunds $30 and the process is killed right after Stripe says yes. Plain LangGraph resumes, decides again, and refunds a second time: the customer gets $60. With Rewind, the ledger shows step run42:1 was dispatched, Rewind asks Stripe whether a refund tagged run42:1 exists, finds it, and confirms instead of resending: the customer gets $30 once.</desc>
+
+  <style>
+    .bg      { fill: #ffffff; }
+    .card    { fill: #f6f8fa; stroke: #d1d9e0; }
+    .ghost   { fill: none; stroke: #d1d9e0; stroke-dasharray: 6 5; }
+    .ledger  { fill: #ddf4ff; stroke: #54aeff; }
+    .bad     { fill: #ffebe9; stroke: #ff8182; }
+    .good    { fill: #dafbe1; stroke: #4ac26b; }
+    .crashbg { fill: #ffebe9; stroke: #cf222e; }
+    .t       { fill: #1f2328; font: 600 19px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .s       { fill: #59636e; font: 15px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .m       { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; }
+    .h1      { fill: #1f2328; font: 700 32px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .h2      { font: 700 21px -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .muted   { fill: #59636e; }
+    .redtxt  { fill: #cf222e; }
+    .greentxt{ fill: #1a7f37; }
+    .bluetxt { fill: #0969da; }
+    .arrow   { stroke: #818b98; stroke-width: 2.5; fill: none; }
+    .ahead   { fill: #818b98; }
+    .crashln { stroke: #cf222e; stroke-width: 2.5; stroke-dasharray: 10 7; }
+    .rule    { stroke: #d1d9e0; stroke-width: 1.5; }
+    .divider { stroke: #d1d9e0; stroke-width: 1.5; stroke-dasharray: 2 6; }
+
+    @media (prefers-color-scheme: dark) {
+      .bg      { fill: #0d1117; }
+      .card    { fill: #161b22; stroke: #3d444d; }
+      .ghost   { stroke: #3d444d; }
+      .ledger  { fill: #0f2340; stroke: #1f6feb; }
+      .bad     { fill: #3a1418; stroke: #da3633; }
+      .good    { fill: #0f2a1a; stroke: #2ea043; }
+      .crashbg { fill: #3a1418; stroke: #f85149; }
+      .t, .h1  { fill: #e6edf3; }
+      .s, .muted { fill: #9198a1; }
+      .redtxt  { fill: #ff7b72; }
+      .greentxt{ fill: #3fb950; }
+      .bluetxt { fill: #4493f8; }
+      .arrow   { stroke: #656c76; }
+      .ahead   { fill: #656c76; }
+      .crashln { stroke: #f85149; }
+      .rule, .divider { stroke: #3d444d; }
+    }
+  </style>
+
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="ahead" d="M0,0 L10,5 L0,10 z"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1200" height="880" rx="16"/>
+
+  <!-- Header -->
+  <text class="h1" x="600" y="58" text-anchor="middle">Same crash. Two outcomes.</text>
+  <text class="s" x="600" y="90" text-anchor="middle">A support agent refunds $30. The process is killed right after Stripe says yes, before LangGraph saves its checkpoint.</text>
+
+  <!-- Column headings -->
+  <text class="h2 redtxt"   x="315" y="148" text-anchor="middle">LangGraph alone</text>
+  <text class="h2 greentxt" x="885" y="148" text-anchor="middle">LangGraph + Rewind</text>
+  <line class="divider" x1="600" y1="128" x2="600" y2="770"/>
+
+  <!-- ============ LEFT: LangGraph alone ============ -->
+  <!-- Row 1 -->
+  <rect class="card" x="95" y="172" width="440" height="64" rx="10"/>
+  <text class="t" x="315" y="200" text-anchor="middle">Agent decides: refund $30</text>
+  <text class="s" x="315" y="223" text-anchor="middle">step 1 of the run</text>
+  <line class="arrow" x1="315" y1="236" x2="315" y2="262" marker-end="url(#ah)"/>
+  <!-- Row 2 -->
+  <rect class="ghost" x="95" y="266" width="440" height="64" rx="10"/>
+  <text class="s" x="315" y="304" text-anchor="middle">Nothing records that a refund is in flight</text>
+  <line class="arrow" x1="315" y1="330" x2="315" y2="356" marker-end="url(#ah)"/>
+  <!-- Row 3 -->
+  <rect class="card" x="95" y="360" width="440" height="64" rx="10"/>
+  <text class="t" x="315" y="388" text-anchor="middle">Stripe refunds $30</text>
+  <text class="s" x="315" y="411" text-anchor="middle">key: random, made up by the Stripe SDK</text>
+  <line class="arrow" x1="315" y1="424" x2="315" y2="530" marker-end="url(#ah)"/>
+  <!-- Row 5 -->
+  <rect class="card" x="95" y="534" width="440" height="64" rx="10"/>
+  <text class="t" x="315" y="562" text-anchor="middle">Resumes. Agent decides again: refund $30</text>
+  <text class="s" x="315" y="585" text-anchor="middle">the checkpoint never saw the first refund</text>
+  <line class="arrow" x1="315" y1="598" x2="315" y2="624" marker-end="url(#ah)"/>
+  <!-- Row 6 -->
+  <rect class="bad" x="95" y="628" width="440" height="64" rx="10"/>
+  <text class="t" x="315" y="656" text-anchor="middle">Stripe refunds $30 again</text>
+  <text class="s" x="315" y="679" text-anchor="middle">new random key, so Stripe sees a new request</text>
+  <line class="arrow" x1="315" y1="692" x2="315" y2="718" marker-end="url(#ah)"/>
+  <!-- Result -->
+  <rect class="bad" x="145" y="722" width="340" height="50" rx="25"/>
+  <path d="M190,737 l20,20 M210,737 l-20,20" stroke="#cf222e" stroke-width="3.5" stroke-linecap="round" class="crashln" style="stroke-dasharray:none"/>
+  <text class="t redtxt" x="330" y="754" text-anchor="middle">Customer refunded $60</text>
+
+  <!-- ============ RIGHT: LangGraph + Rewind ============ -->
+  <!-- Row 1 -->
+  <rect class="card" x="665" y="172" width="440" height="64" rx="10"/>
+  <text class="t" x="885" y="200" text-anchor="middle">Agent decides: refund $30</text>
+  <text class="s" x="885" y="223" text-anchor="middle">step 1 of the run, so the key is <tspan class="m bluetxt">run42:1</tspan></text>
+  <line class="arrow" x1="885" y1="236" x2="885" y2="262" marker-end="url(#ah)"/>
+  <!-- Row 2 -->
+  <rect class="ledger" x="665" y="266" width="440" height="64" rx="10"/>
+  <text class="t" x="885" y="294" text-anchor="middle">Ledger writes the intent first</text>
+  <text class="s" x="885" y="317" text-anchor="middle"><tspan class="m bluetxt">run42:1</tspan>  PENDING → DISPATCHED  (in Postgres)</text>
+  <line class="arrow" x1="885" y1="330" x2="885" y2="356" marker-end="url(#ah)"/>
+  <!-- Row 3 -->
+  <rect class="card" x="665" y="360" width="440" height="64" rx="10"/>
+  <text class="t" x="885" y="388" text-anchor="middle">Stripe refunds $30</text>
+  <text class="s" x="885" y="411" text-anchor="middle">tagged with key <tspan class="m bluetxt">run42:1</tspan></text>
+  <line class="arrow" x1="885" y1="424" x2="885" y2="530" marker-end="url(#ah)"/>
+  <!-- Row 5 -->
+  <rect class="ledger" x="665" y="534" width="440" height="64" rx="10"/>
+  <text class="t" x="885" y="562" text-anchor="middle">Resumes. Ledger: <tspan class="m bluetxt" style="font-size:17px">run42:1</tspan> is DISPATCHED</text>
+  <text class="s" x="885" y="585" text-anchor="middle">it might have happened, so look before resending</text>
+  <line class="arrow" x1="885" y1="598" x2="885" y2="624" marker-end="url(#ah)"/>
+  <!-- Row 6 -->
+  <rect class="card" x="665" y="628" width="440" height="64" rx="10"/>
+  <text class="t" x="885" y="656" text-anchor="middle">Asks Stripe: refund <tspan class="m bluetxt" style="font-size:17px">run42:1</tspan>? Yes</text>
+  <text class="s" x="885" y="679" text-anchor="middle">mark CONFIRMED, reuse the saved result, send nothing</text>
+  <line class="arrow" x1="885" y1="692" x2="885" y2="718" marker-end="url(#ah)"/>
+  <!-- Result -->
+  <rect class="good" x="715" y="722" width="340" height="50" rx="25"/>
+  <path d="M757,748 l8,8 l16,-18" fill="none" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" class="crashln" style="stroke-dasharray:none;stroke:#1a7f37"/>
+  <text class="t greentxt" x="900" y="754" text-anchor="middle">Refunded once: $30</text>
+
+  <!-- ============ CRASH band (drawn last so it sits on top) ============ -->
+  <line class="crashln" x1="40" y1="477" x2="1160" y2="477"/>
+  <rect class="crashbg" x="380" y="456" width="440" height="42" rx="21"/>
+  <path d="M410,463 l-9,15 h8 l-6,14 l16,-19 h-8 l7,-10 z" fill="#cf222e" class="redtxt"/>
+  <text class="t redtxt" x="612" y="484" text-anchor="middle">CRASH: process killed (kill -9)</text>
+
+  <!-- ============ Footer ============ -->
+  <line class="rule" x1="60" y1="804" x2="1140" y2="804"/>
+  <text class="s" x="600" y="836" text-anchor="middle">Benchmark: 2,600 crash trials, 6 systems, 13 failure scenarios, counted from Stripe's own refund list</text>
+  <text class="t" x="600" y="864" text-anchor="middle" style="font-size:17px">Rewind: 0 duplicate refunds  ·  plain LangGraph: 500 per 1,000 crashes  ·  +3.4 ms per tool call</text>
+</svg>

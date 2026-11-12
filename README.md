@@ -2,6 +2,10 @@
 
 **Crash-safe side effects for AI agents.** Rewind is an effect ledger that sits under LangGraph. When an agent crashes, freezes or gets an ambiguous error and then resumes, every real-world action (a refund, an email) happens **exactly once**, is **safely skipped** because the world changed, or is **honestly escalated** to a human. It never happens twice by accident.
 
+<p align="center">
+  <img src="docs/rewind-flow.svg" alt="Same crash, two outcomes: plain LangGraph refunds the customer twice ($60), Rewind checks its ledger and Stripe and refunds once ($30)" width="900">
+</p>
+
 ```python
 from rewind.langgraph_tools import RewindToolNode
 
